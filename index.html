@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KYC Verification</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(145deg, #0b1220, #121a2b);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      background: #0d1524;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .topbar {
+      padding: 24px 22px 12px;
+      text-align: center;
+      z-index: 5;
+      position: relative;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .topbar p {
+      margin: 8px 0 0;
+      color: #aeb8c9;
+      font-size: 14px;
+    }
+
+    .camera-wrap {
+      position: relative;
+      width: 100%;
+      height: 68vh;
+      min-height: 500px;
+      background: #05080f;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .shade {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+    }
+
+    .face-oval {
+      position: absolute;
+      width: 230px;
+      height: 300px;
+      border: 4px solid rgba(255,255,255,0.95);
+      border-radius: 50% / 45%;
+      top: 47%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow:
+        0 0 0 999px rgba(0,0,0,0.32),
+        0 0 28px rgba(64, 224, 208, 0.22);
+      z-index: 3;
+    }
+
+    .scanner {
+      position: absolute;
+      width: 190px;
+      height: 2px;
+      left: 50%;
+      top: calc(47% - 105px);
+      transform: translateX(-50%);
+      background: #42f5c5;
+      box-shadow: 0 0 10px #42f5c5;
+      z-index: 4;
+      animation: scan 2.2s ease-in-out infinite;
+    }
+
+    @keyframes scan {
+      0%, 100% { transform: translate(-50%, 0); opacity: .7; }
+      50% { transform: translate(-50%, 210px); opacity: 1; }
+    }
+
+    .instruction {
+      position: absolute;
+      bottom: 36px;
+      width: 100%;
+      text-align: center;
+      z-index: 5;
+      padding: 0 24px;
+    }
+
+    .instruction .status {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .instruction small {
+      display: block;
+      margin-top: 8px;
+      color: #d3dae6;
+    }
+
+    .error {
+      padding: 18px;
+      text-align: center;
+      color: #ffb4b4;
+      display: none;
+    }
+
+    .success {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, #0e1728, #0b1f1d);
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px;
+    }
+
+    .success.show { display: flex; }
+
+    .check {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 22px;
+      border-radius: 50%;
+      background: #27d69b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: #071b14;
+      box-shadow: 0 0 35px rgba(39,214,155,.35);
+    }
+
+    .success h2 {
+      margin: 0;
+      font-size: 30px;
+    }
+
+    .success p {
+      color: #b9c7c5;
+      margin-top: 10px;
+    }
+
+    .progress {
+      height: 5px;
+      width: 85%;
+      background: rgba(255,255,255,.12);
+      position: absolute;
+      bottom: 14px;
+      left: 7.5%;
+      border-radius: 20px;
+      overflow: hidden;
+      z-index: 6;
+    }
+
+    .progress > div {
+      height: 100%;
+      width: 0%;
+      background: #42f5c5;
+      transition: width .3s linear;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1>Identity Verification</h1>
+      <p>Please position your face inside the frame</p>
+    </div>
+
+    <div class="camera-wrap" id="cameraWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="shade"></div>
+      <div class="face-oval"></div>
+      <div class="scanner" id="scanner"></div>
+
+      <div class="instruction">
+        <div class="status" id="statusText">Starting camera...</div>
+        <small id="subText">Allow camera permission to continue</small>
+      </div>
+
+      <div class="progress">
+        <div id="progressBar"></div>
+      </div>
+    </div>
+
+    <div class="error" id="errorBox"></div>
+
+    <div class="success" id="successScreen">
+      <div>
+        <div class="check">✓</div>
+        <h2>Welcome Nasrin Sultana</h2>
+        <p>Your identity verification is complete.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById("video");
+    const statusText = document.getElementById("statusText");
+    const subText = document.getElementById("subText");
+    const progressBar = document.getElementById("progressBar");
+    const successScreen = document.getElementById("successScreen");
+    const errorBox = document.getElementById("errorBox");
+
+    async function startKYC() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+
+        video.srcObject = stream;
+
+        statusText.textContent = "Position your face in the oval";
+        subText.textContent = "Keep your face steady and look at the camera";
+
+        setTimeout(() => {
+          statusText.textContent = "Face detected";
+          subText.textContent = "Verifying identity...";
+          runVerification(stream);
+        }, 1800);
+
+      } catch (err) {
+        errorBox.style.display = "block";
+        errorBox.textContent =
+          "Camera access was blocked or unavailable. Please allow camera permission and reload the page.";
+        statusText.textContent = "Camera permission required";
+        subText.textContent = "";
+      }
+    }
+
+    function runVerification(stream) {
+      let progress = 0;
+
+      const timer = setInterval(() => {
+        progress += 10;
+        progressBar.style.width = progress + "%";
+
+        if (progress >= 100) {
+          clearInterval(timer);
+          statusText.textContent = "Verification successful";
+          subText.textContent = "";
+
+          setTimeout(() => {
+            stream.getTracks().forEach(track => track.stop());
+            successScreen.classList.add("show");
+          }, 500);
+        }
+      }, 180);
+    }
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      startKYC();
+    } else {
+      errorBox.style.display = "block";
+      errorBox.textContent =
+        "Your browser does not support camera access.";
+    }
+  </script>
+</body>
+</html>
